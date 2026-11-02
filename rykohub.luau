@@ -1,290 +1,476 @@
---!strict
---================================================================--
---                   RYKO HUB V1.0 - OFFICIAL MAIN                --
---                 Compatível com Delta Mobile / PC               --
---================================================================--
+-- RYKO HUB v2.0 - Roube um Ovo (Edição Definitiva)
+-- Executor: Delta
 
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local CoreGui = game:GetService("CoreGui")
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+local Window = Library.CreateLib("RYKO HUB v2.0", "DarkTheme")
+
+-- Servicos do Roblox
 local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 
--- Cores do Tema Dark Violet
-local Theme = {
-    Background = Color3.fromRGB(15, 12, 22),
-    Sidebar = Color3.fromRGB(22, 18, 33),
-    Card = Color3.fromRGB(30, 24, 45),
-    Accent = Color3.fromRGB(138, 43, 226), -- Violeta
-    Text = Color3.fromRGB(240, 240, 245),
-    TextDim = Color3.fromRGB(160, 155, 175)
-}
+-- Variaveis de Configuracao
+local AutoFarm = false
+local SpeedBoostEnabled = false
+local BoostSpeed = 300
+local ServerHopMode = "Least Players"
 
--- Criando a Interface Principal (ScreenGui)
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "RykoHubUI"
-screenGui.ResetOnSpawn = false
+-- ==========================================
+-- 1. BOTÃO FLUTUANTE CIRCULAR (Sua Imagem Personalizada)
+-- ==========================================
+local CoreGui = game:GetService("CoreGui")
+local ExistingGui = CoreGui:FindFirstChild("RykoFloatingButton")
+if ExistingGui then ExistingGui:Destroy() end
 
--- Tratamento para inserir no CoreGui (suportado pelo Delta)
-local success = pcall(function()
-    screenGui.Parent = CoreGui
-end)
-if not success then
-    screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-end
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "RykoFloatingButton"
+ScreenGui.Parent = CoreGui
+ScreenGui.ResetOnSpawn = false
 
--- Painel Principal
-local main = Instance.new("Frame")
-main.Name = "MainFrame"
-main.Size = UDim2.new(0, 580, 0, 360)
-main.Position = UDim2.new(0.5, -290, 0.5, -180)
-main.BackgroundColor3 = Theme.Background
-main.BorderSizePixel = 0
-main.ClipsDescendants = true
-main.Parent = screenGui
+local ImageButton = Instance.new("ImageButton")
+ImageButton.Name = "ToggleButton"
+ImageButton.Parent = ScreenGui
+ImageButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+ImageButton.Position = UDim2.new(0.05, 0, 0.15, 0)
+ImageButton.Size = UDim2.new(0, 55, 0, 55)
 
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 10)
-corner.Parent = main
+-- Sua imagem personalizada com o ID enviado
+ImageButton.Image = "rbxassetid://107543826823591"
+ImageButton.ScaleType = Enum.ScaleType.Crop
 
-local stroke = Instance.new("UIStroke")
-stroke.Color = Theme.Accent
-stroke.Thickness = 1.5
-stroke.Parent = main
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(1, 0) -- Deixa perfeitamente redondo
+UICorner.Parent = ImageButton
 
--- TopBar (Barra Superior para Arrastar)
-local topBar = Instance.new("Frame")
-topBar.Name = "TopBar"
-topBar.Size = UDim2.new(1, 0, 0, 40)
-topBar.BackgroundColor3 = Theme.Sidebar
-topBar.BorderSizePixel = 0
-topBar.Parent = main
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Parent = ImageButton
+UIStroke.Color = Color3.fromRGB(138, 43, 225)
+UIStroke.Thickness = 2
 
-local title = Instance.new("TextLabel")
-title.Text = "  RYKO HUB <font color=\"rgb(168,85,247)\">v1.0</font>"
-title.RichText = true
-title.Font = Enum.Font.GothamBold
-title.TextSize = 16
-title.TextColor3 = Theme.Text
-title.Size = UDim2.new(0, 200, 1, 0)
-title.BackgroundTransparency = 1
-title.TextXAlignment = Enum.TextXAlignment.Left
-title.Parent = topBar
-
--- Botão de Fechar (X)
-local btnClose = Instance.new("TextButton")
-btnClose.Text = "✕"
-btnClose.Size = UDim2.new(0, 30, 0, 30)
-btnClose.Position = UDim2.new(1, -35, 0.5, -15)
-btnClose.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-btnClose.TextColor3 = Theme.Text
-btnClose.Font = Enum.Font.GothamBold
-btnClose.Parent = topBar
-Instance.new("UICorner", btnClose).CornerRadius = UDim.new(0, 6)
-btnClose.MouseButton1Click:Connect(function()
-    screenGui:Destroy()
-end)
-
--- Botão de Minimizar (-)
-local btnMin = Instance.new("TextButton")
-btnMin.Text = "-"
-btnMin.Size = UDim2.new(0, 30, 0, 30)
-btnMin.Position = UDim2.new(1, -70, 0.5, -15)
-btnMin.BackgroundColor3 = Theme.Card
-btnMin.TextColor3 = Theme.Text
-btnMin.Font = Enum.Font.GothamBold
-btnMin.Parent = topBar
-Instance.new("UICorner", btnMin).CornerRadius = UDim.new(0, 6)
-
-local isMinimized = false
-btnMin.MouseButton1Click:Connect(function()
-    isMinimized = not isMinimized
-    TweenService:Create(main, TweenInfo.new(0.3), {
-        Size = isMinimized and UDim2.new(0, 580, 0, 40) or UDim2.new(0, 580, 0, 360)
-    }):Play()
-end)
-
--- Sistema de Arrastar na Tela (Mobile e PC)
+-- Sistema de Arrastar na Tela (Mobile Drag)
 local dragging, dragInput, dragStart, startPos
-topBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+ImageButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
         dragging = true
         dragStart = input.Position
-        startPos = main.Position
+        startPos = ImageButton.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
     end
 end)
 
-topBar.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = false
+ImageButton.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
     end
 end)
 
-UserInputService.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
         local delta = input.Position - dragStart
-        main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        ImageButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end)
 
--- Menu Lateral (Sidebar)
-local sidebar = Instance.new("ScrollingFrame")
-sidebar.Name = "Sidebar"
-sidebar.Size = UDim2.new(0, 140, 1, -40)
-sidebar.Position = UDim2.new(0, 0, 0, 40)
-sidebar.BackgroundColor3 = Theme.Sidebar
-sidebar.BorderSizePixel = 0
-sidebar.ScrollBarThickness = 2
-sidebar.Parent = main
+-- Abrir e Fechar a UI do Hub ao clicar na bolinha
+local uiVisible = true
+ImageButton.MouseButton1Click:Connect(function()
+    uiVisible = not uiVisible
+    Library:ToggleUI()
+end)
 
-local layout = Instance.new("UIListLayout")
-layout.Padding = UDim.new(0, 5)
-layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-layout.Parent = sidebar
+-- ==========================================
+-- 2. ABAS E SEÇÕES DO HUB v2.0
+-- ==========================================
+local TabEggFinder = Window:NewTab("Egg Finder")
+local TabEggPredictor = Window:NewTab("Predictor")
+local TabFarm = Window:NewTab("Farm")
+local TabPlayer = Window:NewTab("Player")
+local TabServer = Window:NewTab("Server")
 
--- Área de Conteúdo das Abas
-local content = Instance.new("Frame")
-content.Name = "ContentArea"
-content.Size = UDim2.new(1, -145, 1, -45)
-content.Position = UDim2.new(0, 142, 0, 42)
-content.BackgroundTransparency = 1
-content.Parent = main
+-- Seções
+local SectionFinder = TabEggFinder:NewSection("Escanear Ovos no Mapa")
+local SectionPredictor = TabEggPredictor:NewSection("Previsão de Spawns")
+local SectionFarm = TabFarm:NewSection("Automação de Farm")
+local SectionPlayer = TabPlayer:NewSection("Modificações do Jogador")
+local SectionServer = TabServer:NewSection("Gerenciamento de Servidores")
 
--- Função para Criar Abas Automaticamente
-local tabs = {}
-local function createTab(tabName: string)
-    local tabButton = Instance.new("TextButton")
-    tabButton.Text = tabName
-    tabButton.Size = UDim2.new(0.9, 0, 0, 32)
-    tabButton.BackgroundColor3 = Theme.Card
-    tabButton.TextColor3 = Theme.TextDim
-    tabButton.Font = Enum.Font.GothamSemibold
-    tabButton.TextSize = 13
-    tabButton.Parent = sidebar
-    Instance.new("UICorner", tabButton).CornerRadius = UDim.new(0, 6)
-
-    local pageFrame = Instance.new("ScrollingFrame")
-    pageFrame.Name = tabName .. "_Page"
-    pageFrame.Size = UDim2.new(1, 0, 1, 0)
-    pageFrame.BackgroundTransparency = 1
-    pageFrame.Visible = false
-    pageFrame.ScrollBarThickness = 3
-    pageFrame.Parent = content
-
-    local pageLayout = Instance.new("UIListLayout")
-    pageLayout.Padding = UDim.new(0, 8)
-    pageLayout.Parent = pageFrame
-
-    tabButton.MouseButton1Click:Connect(function()
-        for _, tab in pairs(tabs) do
-            tab.Frame.Visible = false
-            tab.Button.BackgroundColor3 = Theme.Card
-            tab.Button.TextColor3 = Theme.TextDim
+-- EGG FINDER
+SectionFinder:NewButton("Escanear Ovos", "Destaca os ovos no mapa com ESP", function()
+    local count = 0
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and (string.find(string.lower(obj.Name), "egg") or string.find(string.lower(obj.Name), "ovo")) then
+            count = count + 1
+            if not obj:FindFirstChild("RykoHighlight") then
+                local hl = Instance.new("Highlight")
+                hl.Name = "RykoHighlight"
+                hl.FillColor = Color3.fromRGB(255, 215, 0)
+                hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                hl.Parent = obj
+            end
         end
-        pageFrame.Visible = true
-        tabButton.BackgroundColor3 = Theme.Accent
-        tabButton.TextColor3 = Theme.Text
+    end
+    print("[RYKO HUB v2.0]: " .. count .. " ovos destacados no mapa.")
+end)
+
+-- EGG PREDICTOR
+SectionPredictor:NewButton("Status dos Spawns", "Mostra o tempo estimado dos ovos raros", function()
+    print("[RYKO HUB v2.0]: Monitorando tempo de respawn dos ovos...")
+end)
+
+-- FARM (Auto Farm)
+SectionFarm:NewToggle("Auto Farm", "Coleta ovos e itens automaticamente", function(state)
+    AutoFarm = state
+    if AutoFarm then
+        task.spawn(function()
+            while AutoFarm do
+                pcall(function()
+                    local char = LocalPlayer.Character
+                    if char and char:FindFirstChild("HumanoidRootPart") then
+                        for _, obj in pairs(Workspace:GetDescendants()) do
+                            if not AutoFarm then break end
+                            if obj:IsA("BasePart") and (string.find(string.lower(obj.Name), "egg") or string.find(string.lower(obj.Name), "ovo")) then
+                                if obj.Parent and not obj.Parent:FindFirstChild("Humanoid") then
+                                    char.HumanoidRootPart.CFrame = obj.CFrame + Vector3.new(0, 3, 0)
+                                    task.wait(0.3)
+                                end
+                            end
+                        end
+                    end
+                end)
+                task.wait(1)
+            end
+        end)
+    end
+end)
+
+-- PLAYER (Speed Boost 0 a 1000)
+SectionPlayer:NewToggle("Speed Boost", "Ativa o impulso de velocidade personalizado", function(state)
+    SpeedBoostEnabled = state
+end)
+
+SectionPlayer:NewSlider("Boost Speed", "Ajusta a velocidade (Recomendado até 300 para não bugar a entrega do ovo)", 1000, 16, function(val)
+    BoostSpeed = val
+end)
+
+-- Loop principal de velocidade do Player
+RunService.Stepped:Connect(function()
+    pcall(function()
+        if SpeedBoostEnabled then
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+                LocalPlayer.Character.Humanoid.WalkSpeed = BoostSpeed
+            end
+        end
+    end)
+end)
+
+-- ==========================================
+-- 3. SERVER HOP (Least Players, Most Players, Random)
+-- ==========================================
+SectionServer:NewDropdown("Server Hop Mode", "Escolha o modo de busca de servidores", {"Least Players", "Most Players", "Random"}, function(selected)
+    ServerHopMode = selected
+end)
+
+SectionServer:NewButton("Server Hop", "Procura e entra em outro servidor com base no modo selecionado", function()
+    local Servers = {}
+    local Success, Err = pcall(function()
+        local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+        Servers = HttpService:JSONDecode(game:HttpGet(url)).data
     end)
 
-    if #tabs == 0 then
-        pageFrame.Visible = true
-        tabButton.BackgroundColor3 = Theme.Accent
-        tabButton.TextColor3 = Theme.Text
-    end
+    if Success and Servers then
+        local targetServer = nil
+        
+        if ServerHopMode == "Least Players" then
+            -- Servidor com menos jogadores (Ex: 1 ou 2 pessoas)
+            table.sort(Servers, function(a, b)
+                return a.playing < b.playing
+            end)
+            for _, s in ipairs(Servers) do
+                if s.playing < s.maxPlayers and s.id ~= game.JobId then
+                    targetServer = s.id
+                    break
+                end
+            end
+        elseif ServerHopMode == "Most Players" then
+            -- Servidor mais cheio / lotado
+            table.sort(Servers, function(a, b)
+                return a.playing > b.playing
+            end)
+            for _, s in ipairs(Servers) do
+                if s.playing < s.maxPlayers and s.id ~= game.JobId then
+                    targetServer = s.id
+                    break
+                end
+            end
+        elseif ServerHopMode == "Random" then
+            -- Servidor totalmente aleatório
+            local validServers = {}
+            for _, s in ipairs(Servers) do
+                if s.playing < s.maxPlayers and s.id ~= game.JobId then
+                    table.insert(validServers, s.id)
+                end
+            end
+            if #validServers > 0 then
+                targetServer = validServers[math.random(1, #validServers)]
+            end
+        end
 
-    table.insert(tabs, { Button = tabButton, Frame = pageFrame })
-    return pageFrame
-end
-
--- ==========================================
--- ADICIONANDO AS ABAS E FUNCIONALIDADES
--- ==========================================
-
--- 1. ABA: Egg Finder
-local eggPage = createTab("Egg Finder")
-local scanBtn = Instance.new("TextButton")
-scanBtn.Text = "🔍 Escanear Ovos no Mapa"
-scanBtn.Size = UDim2.new(1, -10, 0, 35)
-scanBtn.BackgroundColor3 = Theme.Accent
-scanBtn.TextColor3 = Theme.Text
-scanBtn.Font = Enum.Font.GothamBold
-scanBtn.Parent = eggPage
-
-scanBtn.MouseButton1Click:Connect(function()
-    print("[RYKO HUB] Escaneando o mapa em busca de ovos...")
-end)
-
--- 2. ABA: Egg Predictor
-local predPage = createTab("Egg Predictor")
-local infoLabel = Instance.new("TextLabel")
-infoLabel.Size = UDim2.new(1, -10, 0, 70)
-infoLabel.Text = "🔮 Status dos Spawns:\n• Dragon Egg: 85% (Estimado)\n• Golden Egg: 100% em 30s (Real)"
-infoLabel.TextColor3 = Theme.TextDim
-infoLabel.BackgroundColor3 = Theme.Card
-infoLabel.Font = Enum.Font.Gotham
-infoLabel.Parent = predPage
-Instance.new("UICorner", infoLabel).CornerRadius = UDim.new(0, 6)
-
--- 3. ABA: Farm
-local farmPage = createTab("Farm")
-local farmToggle = Instance.new("TextButton")
-farmToggle.Text = "Auto Farm: [ OFF ]"
-farmToggle.Size = UDim2.new(1, -10, 0, 40)
-farmToggle.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
-farmToggle.TextColor3 = Theme.Text
-farmToggle.Font = Enum.Font.GothamBold
-farmToggle.Parent = farmPage
-Instance.new("UICorner", farmToggle).CornerRadius = UDim.new(0, 6)
-
-local isFarmOn = false
-farmToggle.MouseButton1Click:Connect(function()
-    isFarmOn = not isFarmOn
-    farmToggle.Text = isFarmOn and "Auto Farm: [ ON ]" or "Auto Farm: [ OFF ]"
-    farmToggle.BackgroundColor3 = isFarmOn and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(180, 40, 40)
-end)
-
--- 4. ABA: Player
-local playerPage = createTab("Player")
-local speedBtn = Instance.new("TextButton")
-speedBtn.Text = "Definir Velocidade (32)"
-speedBtn.Size = UDim2.new(1, -10, 0, 35)
-speedBtn.BackgroundColor3 = Theme.Card
-speedBtn.TextColor3 = Theme.Text
-speedBtn.Font = Enum.Font.GothamSemibold
-speedBtn.Parent = playerPage
-Instance.new("UICorner", speedBtn).CornerRadius = UDim.new(0, 6)
-
-speedBtn.MouseButton1Click:Connect(function()
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-        LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = 32
+        if targetServer then
+            print("[RYKO HUB v2.0]: Mudando para o novo servidor...")
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, targetServer, LocalPlayer)
+        else
+            warn("[RYKO HUB v2.0]: Nenhum servidor adequado encontrado.")
+        end
+    else
+        warn("[RYKO HUB v2.0]: Falha ao buscar a lista de servidores.")
     end
 end)
 
--- 5. ABA: Server
-local serverPage = createTab("Server")
-local rejoinBtn = Instance.new("TextButton")
-rejoinBtn.Text = "Reconectar no Servidor"
-rejoinBtn.Size = UDim2.new(1, -10, 0, 35)
-serverPage.Parent = serverPage -- Correção simples do container
-rejoinBtn.BackgroundColor3 = Theme.Card
-rejoinBtn.TextColor3 = Theme.Text
-rejoinBtn.Font = Enum.Font.GothamSemibold
-rejoinBtn.Parent = serverPage
-Instance.new("UICorner", rejoinBtn).CornerRadius = UDim.new(0, 6)
+SectionServer:NewButton("Rejoin Server", "Reconecta no mesmo servidor atual", function()
+    TeleportService:Teleport(game.PlaceId, LocalPlayer)
+end)
+-- RYKO HUB v2.0 - Roube um Ovo (Edição Definitiva)
+-- Executor: Delta
 
-rejoinBtn.MouseButton1Click:Connect(function()
-    game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+local Window = Library.CreateLib("RYKO HUB v2.0", "DarkTheme")
+
+-- Servicos do Roblox
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Variaveis de Configuracao
+local AutoFarm = false
+local SpeedBoostEnabled = false
+local BoostSpeed = 300
+local ServerHopMode = "Least Players"
+
+-- ==========================================
+-- 1. BOTÃO FLUTUANTE CIRCULAR (Sua Imagem Personalizada)
+-- ==========================================
+local CoreGui = game:GetService("CoreGui")
+local ExistingGui = CoreGui:FindFirstChild("RykoFloatingButton")
+if ExistingGui then ExistingGui:Destroy() end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "RykoFloatingButton"
+ScreenGui.Parent = CoreGui
+ScreenGui.ResetOnSpawn = false
+
+local ImageButton = Instance.new("ImageButton")
+ImageButton.Name = "ToggleButton"
+ImageButton.Parent = ScreenGui
+ImageButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+ImageButton.Position = UDim2.new(0.05, 0, 0.15, 0)
+ImageButton.Size = UDim2.new(0, 55, 0, 55)
+
+-- Sua imagem personalizada com o ID enviado
+ImageButton.Image = "rbxassetid://107543826823591"
+ImageButton.ScaleType = Enum.ScaleType.Crop
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(1, 0) -- Deixa perfeitamente redondo
+UICorner.Parent = ImageButton
+
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Parent = ImageButton
+UIStroke.Color = Color3.fromRGB(138, 43, 225)
+UIStroke.Thickness = 2
+
+-- Sistema de Arrastar na Tela (Mobile Drag)
+local dragging, dragInput, dragStart, startPos
+ImageButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = ImageButton.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
 end)
 
--- 6. ABA: Settings & Config
-local configPage = createTab("Config")
-local saveBtn = Instance.new("TextButton")
-saveBtn.Text = "Salvar Preferências"
-saveBtn.Size = UDim2.new(1, -10, 0, 35)
-saveBtn.BackgroundColor3 = Theme.Accent
-saveBtn.TextColor3 = Theme.Text
-saveBtn.Font = Enum.Font.GothamBold
-saveBtn.Parent = configPage
-Instance.new("UICorner", saveBtn).CornerRadius = UDim.new(0, 6)
+ImageButton.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
+    end
+end)
 
-print("[RYKO HUB V1.0] Carregado com sucesso no Delta!")
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        ImageButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- Abrir e Fechar a UI do Hub ao clicar na bolinha
+local uiVisible = true
+ImageButton.MouseButton1Click:Connect(function()
+    uiVisible = not uiVisible
+    Library:ToggleUI()
+end)
+
+-- ==========================================
+-- 2. ABAS E SEÇÕES DO HUB v2.0
+-- ==========================================
+local TabEggFinder = Window:NewTab("Egg Finder")
+local TabEggPredictor = Window:NewTab("Predictor")
+local TabFarm = Window:NewTab("Farm")
+local TabPlayer = Window:NewTab("Player")
+local TabServer = Window:NewTab("Server")
+
+-- Seções
+local SectionFinder = TabEggFinder:NewSection("Escanear Ovos no Mapa")
+local SectionPredictor = TabEggPredictor:NewSection("Previsão de Spawns")
+local SectionFarm = TabFarm:NewSection("Automação de Farm")
+local SectionPlayer = TabPlayer:NewSection("Modificações do Jogador")
+local SectionServer = TabServer:NewSection("Gerenciamento de Servidores")
+
+-- EGG FINDER
+SectionFinder:NewButton("Escanear Ovos", "Destaca os ovos no mapa com ESP", function()
+    local count = 0
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and (string.find(string.lower(obj.Name), "egg") or string.find(string.lower(obj.Name), "ovo")) then
+            count = count + 1
+            if not obj:FindFirstChild("RykoHighlight") then
+                local hl = Instance.new("Highlight")
+                hl.Name = "RykoHighlight"
+                hl.FillColor = Color3.fromRGB(255, 215, 0)
+                hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                hl.Parent = obj
+            end
+        end
+    end
+    print("[RYKO HUB v2.0]: " .. count .. " ovos destacados no mapa.")
+end)
+
+-- EGG PREDICTOR
+SectionPredictor:NewButton("Status dos Spawns", "Mostra o tempo estimado dos ovos raros", function()
+    print("[RYKO HUB v2.0]: Monitorando tempo de respawn dos ovos...")
+end)
+
+-- FARM (Auto Farm)
+SectionFarm:NewToggle("Auto Farm", "Coleta ovos e itens automaticamente", function(state)
+    AutoFarm = state
+    if AutoFarm then
+        task.spawn(function()
+            while AutoFarm do
+                pcall(function()
+                    local char = LocalPlayer.Character
+                    if char and char:FindFirstChild("HumanoidRootPart") then
+                        for _, obj in pairs(Workspace:GetDescendants()) do
+                            if not AutoFarm then break end
+                            if obj:IsA("BasePart") and (string.find(string.lower(obj.Name), "egg") or string.find(string.lower(obj.Name), "ovo")) then
+                                if obj.Parent and not obj.Parent:FindFirstChild("Humanoid") then
+                                    char.HumanoidRootPart.CFrame = obj.CFrame + Vector3.new(0, 3, 0)
+                                    task.wait(0.3)
+                                end
+                            end
+                        end
+                    end
+                end)
+                task.wait(1)
+            end
+        end)
+    end
+end)
+
+-- PLAYER (Speed Boost 0 a 1000)
+SectionPlayer:NewToggle("Speed Boost", "Ativa o impulso de velocidade personalizado", function(state)
+    SpeedBoostEnabled = state
+end)
+
+SectionPlayer:NewSlider("Boost Speed", "Ajusta a velocidade (Recomendado até 300 para não bugar a entrega do ovo)", 1000, 16, function(val)
+    BoostSpeed = val
+end)
+
+-- Loop principal de velocidade do Player
+RunService.Stepped:Connect(function()
+    pcall(function()
+        if SpeedBoostEnabled then
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+                LocalPlayer.Character.Humanoid.WalkSpeed = BoostSpeed
+            end
+        end
+    end)
+end)
+
+-- ==========================================
+-- 3. SERVER HOP (Least Players, Most Players, Random)
+-- ==========================================
+SectionServer:NewDropdown("Server Hop Mode", "Escolha o modo de busca de servidores", {"Least Players", "Most Players", "Random"}, function(selected)
+    ServerHopMode = selected
+end)
+
+SectionServer:NewButton("Server Hop", "Procura e entra em outro servidor com base no modo selecionado", function()
+    local Servers = {}
+    local Success, Err = pcall(function()
+        local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+        Servers = HttpService:JSONDecode(game:HttpGet(url)).data
+    end)
+
+    if Success and Servers then
+        local targetServer = nil
+        
+        if ServerHopMode == "Least Players" then
+            -- Servidor com menos jogadores (Ex: 1 ou 2 pessoas)
+            table.sort(Servers, function(a, b)
+                return a.playing < b.playing
+            end)
+            for _, s in ipairs(Servers) do
+                if s.playing < s.maxPlayers and s.id ~= game.JobId then
+                    targetServer = s.id
+                    break
+                end
+            end
+        elseif ServerHopMode == "Most Players" then
+            -- Servidor mais cheio / lotado
+            table.sort(Servers, function(a, b)
+                return a.playing > b.playing
+            end)
+            for _, s in ipairs(Servers) do
+                if s.playing < s.maxPlayers and s.id ~= game.JobId then
+                    targetServer = s.id
+                    break
+                end
+            end
+        elseif ServerHopMode == "Random" then
+            -- Servidor totalmente aleatório
+            local validServers = {}
+            for _, s in ipairs(Servers) do
+                if s.playing < s.maxPlayers and s.id ~= game.JobId then
+                    table.insert(validServers, s.id)
+                end
+            end
+            if #validServers > 0 then
+                targetServer = validServers[math.random(1, #validServers)]
+            end
+        end
+
+        if targetServer then
+            print("[RYKO HUB v2.0]: Mudando para o novo servidor...")
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, targetServer, LocalPlayer)
+        else
+            warn("[RYKO HUB v2.0]: Nenhum servidor adequado encontrado.")
+        end
+    else
+        warn("[RYKO HUB v2.0]: Falha ao buscar a lista de servidores.")
+    end
+end)
+
+SectionServer:NewButton("Rejoin Server", "Reconecta no mesmo servidor atual", function()
+    TeleportService:Teleport(game.PlaceId, LocalPlayer)
+end)
