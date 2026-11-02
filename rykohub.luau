@@ -1,8 +1,8 @@
--- RYKO HUB v2.4 - Roube um Ovo (Correção de Fecho de Interface)
+-- RYKO HUB v2.5 - Roube um Ovo (Edição Definitiva & Arrastável)
 -- Executor: Delta
 
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("RYKO HUB v2.4", "DarkTheme")
+local Window = Library.CreateLib("RYKO HUB v2.5", "DarkTheme")
 
 -- Servicos do Roblox
 local Players = game:GetService("Players")
@@ -21,7 +21,23 @@ local ServerHopMode = "Least Players"
 local AutoStealEnabled = false
 
 -- ==========================================
--- 1. BOTÃO FLUTUANTE PRINCIPAL (Abre/Fecha o Hub Corrigido)
+-- 1. TORNAR O PAINEL PRINCIPAL (KAVO) ARRASTÁVEL
+-- ==========================================
+task.spawn(function()
+    task.wait(0.5)
+    pcall(function()
+        for _, gui in pairs(CoreGui:GetChildren()) do
+            if gui:IsA("ScreenGui") and gui:FindFirstChild("Main") then
+                local mainFrame = gui.Main
+                mainFrame.Active = true
+                mainFrame.Draggable = true
+            end
+        end
+    end)
+end)
+
+-- ==========================================
+-- 2. BOTÃO FLUTUANTE PRINCIPAL (Abre/Fecha)
 -- ==========================================
 local ExistingGui = CoreGui:FindFirstChild("RykoFloatingButton")
 if ExistingGui then ExistingGui:Destroy() end
@@ -81,20 +97,14 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- Sistema de Toggle limpo para a UI Principal
 ImageButton.MouseButton1Click:Connect(function()
     if clicked then
         pcall(function()
-            local mainUI = CoreGui:FindFirstChild("KavoUI") or CoreGui:FindFirstChild("ScreenGui")
-            if mainUI then
-                for _, child in pairs(CoreGui:GetChildren()) do
-                    if child:IsA("ScreenGui") and child:FindFirstChild("Main") then
-                        child.Enabled = not child.Enabled
-                        break
-                    end
+            for _, child in pairs(CoreGui:GetChildren()) do
+                if child:IsA("ScreenGui") and child:FindFirstChild("Main") then
+                    child.Enabled = not child.Enabled
+                    break
                 end
-            else
-                Library:ToggleUI()
             end
         end)
     end
@@ -102,7 +112,7 @@ ImageButton.MouseButton1Click:Connect(function()
 end)
 
 -- ==========================================
--- 2. PAINEL LATERAL FLUTUANTE (STEAL PANEL) COM FECHO PERFEITO
+-- 3. PAINEL LATERAL FLUTUANTE (STEAL PANEL) COM CORREDOR AUTOMÁTICO
 -- ==========================================
 local ExistingStealGui = CoreGui:FindFirstChild("RykoStealPanel")
 if ExistingStealGui then ExistingStealGui:Destroy() end
@@ -138,7 +148,6 @@ local TitleCorner = Instance.new("UICorner")
 TitleCorner.CornerRadius = UDim.new(0, 8)
 TitleCorner.Parent = TitleLabel
 
--- Botão de Fechar o Painel Lateral (X)
 local ClosePanelBtn = Instance.new("TextButton")
 ClosePanelBtn.Parent = TitleLabel
 ClosePanelBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
@@ -153,7 +162,6 @@ local CloseCorner = Instance.new("UICorner")
 CloseCorner.CornerRadius = UDim.new(0, 4)
 CloseCorner.Parent = ClosePanelBtn
 
--- Botão Flutuante Secundário para reabrir o Steal Panel
 local StealToggleBtn = Instance.new("ImageButton")
 StealToggleBtn.Name = "StealToggleButton"
 StealToggleBtn.Parent = ScreenGui
@@ -178,7 +186,6 @@ StealToggleBtn.MouseButton1Click:Connect(function()
     StealToggleBtn.Visible = false
 end)
 
--- Botão Auto Steal
 local AutoStealBtn = Instance.new("TextButton")
 AutoStealBtn.Parent = MainPanel
 AutoStealBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
@@ -204,7 +211,6 @@ AutoStealBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Lista de Ovos no Painel Lateral
 local ScrollingFrame = Instance.new("ScrollingFrame")
 ScrollingFrame.Parent = MainPanel
 ScrollingFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
@@ -216,6 +222,16 @@ local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.Parent = ScrollingFrame
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Padding = UDim.new(0, 5)
+
+-- Função de Caminhar até o Ovo (Sem Teleporte, sem morrer/stun)
+local function WalkToTarget(targetPos)
+    pcall(function()
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("Humanoid") then
+            char.Humanoid:MoveTo(targetPos)
+        end
+    end)
+end
 
 -- Atualizador dos Ovos
 task.spawn(function()
@@ -264,11 +280,7 @@ task.spawn(function()
                         
                         local targetObj = obj
                         stealActionBtn.MouseButton1Click:Connect(function()
-                            pcall(function()
-                                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                                    LocalPlayer.Character.HumanoidRootPart.CFrame = targetObj.CFrame + Vector3.new(0, 3, 0)
-                                end
-                            end)
+                            WalkToTarget(targetObj.Position)
                         end)
                     end
                 end
@@ -278,21 +290,18 @@ task.spawn(function()
     end
 end)
 
--- Auto Steal Loop
+-- Auto Steal por Caminhada Fluida
 task.spawn(function()
     while true do
         task.wait(1)
         if AutoStealEnabled then
             pcall(function()
-                local char = LocalPlayer.Character
-                if char and char:FindFirstChild("HumanoidRootPart") then
-                    for _, obj in pairs(Workspace:GetDescendants()) do
-                        if not AutoStealEnabled then break end
-                        if obj:IsA("BasePart") and (string.find(string.lower(obj.Name), "egg") or string.find(string.lower(obj.Name), "ovo")) then
-                            if obj.Parent and not obj.Parent:FindFirstChild("Humanoid") then
-                                char.HumanoidRootPart.CFrame = obj.CFrame + Vector3.new(0, 3, 0)
-                                task.wait(0.2)
-                            end
+                for _, obj in pairs(Workspace:GetDescendants()) do
+                    if not AutoStealEnabled then break end
+                    if obj:IsA("BasePart") and (string.find(string.lower(obj.Name), "egg") or string.find(string.lower(obj.Name), "ovo")) then
+                        if obj.Parent and not obj.Parent:FindFirstChild("Humanoid") then
+                            WalkToTarget(obj.Position)
+                            task.wait(1.5)
                         end
                     end
                 end
@@ -302,7 +311,7 @@ task.spawn(function()
 end)
 
 -- ==========================================
--- 3. ABAS DO HUB v2.4
+-- 4. ABAS DO HUB v2.5
 -- ==========================================
 local TabPlayer = Window:NewTab("Player")
 local TabServer = Window:NewTab("Server")
@@ -310,7 +319,7 @@ local TabServer = Window:NewTab("Server")
 local SectionPlayer = TabPlayer:NewSection("Modificações do Jogador")
 local SectionServer = TabServer:NewSection("Gerenciamento de Servidores")
 
--- PLAYER (Speed Boost Anti-Stun)
+-- PLAYER (Speed Boost 100% Estável e Sem Stun por Movimento Nativo)
 SectionPlayer:NewToggle("Speed Boost", "Velocidade otimizada sem puxar para trás", function(state)
     SpeedBoostEnabled = state
 end)
@@ -324,18 +333,14 @@ RunService.RenderStepped:Connect(function()
         if SpeedBoostEnabled then
             local char = LocalPlayer.Character
             if char and char:FindFirstChild("Humanoid") and char:FindFirstChild("HumanoidRootPart") then
-                local humanoid = char.Humanoid
-                humanoid.WalkSpeed = BoostSpeed
-                if humanoid.MoveDirection.Magnitude > 0 then
-                    char.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame + (humanoid.MoveDirection * (BoostSpeed / 15000))
-                end
+                char.Humanoid.WalkSpeed = BoostSpeed
             end
         end
     end)
 end)
 
 -- ==========================================
--- 4. SERVER HOP
+-- 5. SERVER HOP
 -- ==========================================
 SectionServer:NewDropdown("Server Hop Mode", "Modo de troca de servidor", {"Least Players", "Most Players", "Random"}, function(selected)
     ServerHopMode = selected
