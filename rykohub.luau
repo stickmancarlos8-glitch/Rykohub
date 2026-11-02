@@ -85,10 +85,8 @@ end)
 ImageButton.MouseButton1Click:Connect(function()
     if clicked then
         pcall(function()
-            -- Alterna o estado da UI Kavo de forma segura
             local mainUI = CoreGui:FindFirstChild("KavoUI") or CoreGui:FindFirstChild("ScreenGui")
             if mainUI then
-                -- Procura a janela principal dentro da biblioteca
                 for _, child in pairs(CoreGui:GetChildren()) do
                     if child:IsA("ScreenGui") and child:FindFirstChild("Main") then
                         child.Enabled = not child.Enabled
@@ -192,4 +190,190 @@ AutoStealBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
 AutoStealBtn.TextSize = 13
 
 local BtnCorner = Instance.new("UICorner")
-BtnCorner.Corner
+BtnCorner.CornerRadius = UDim.new(0, 6)
+BtnCorner.Parent = AutoStealBtn
+
+AutoStealBtn.MouseButton1Click:Connect(function()
+    AutoStealEnabled = not AutoStealEnabled
+    if AutoStealEnabled then
+        AutoStealBtn.Text = "Auto Steal: ON"
+        AutoStealBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
+    else
+        AutoStealBtn.Text = "Auto Steal: OFF"
+        AutoStealBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+    end
+end)
+
+-- Lista de Ovos no Painel Lateral
+local ScrollingFrame = Instance.new("ScrollingFrame")
+ScrollingFrame.Parent = MainPanel
+ScrollingFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+ScrollingFrame.Position = UDim2.new(0.05, 0, 0.26, 0)
+ScrollingFrame.Size = UDim2.new(0.9, 0, 0.7, 0)
+ScrollingFrame.CanvasSize = UDim2.new(0, 0, 2, 0)
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Parent = ScrollingFrame
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 5)
+
+-- Atualizador dos Ovos
+task.spawn(function()
+    while true do
+        pcall(function()
+            for _, child in pairs(ScrollingFrame:GetChildren()) do
+                if child:IsA("Frame") then child:Destroy() end
+            end
+            
+            for _, obj in pairs(Workspace:GetDescendants()) do
+                if obj:IsA("BasePart") and (string.find(string.lower(obj.Name), "egg") or string.find(string.lower(obj.Name), "ovo")) then
+                    if obj.Parent and not obj.Parent:FindFirstChild("Humanoid") then
+                        local itemFrame = Instance.new("Frame")
+                        itemFrame.Parent = ScrollingFrame
+                        itemFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+                        itemFrame.Size = UDim2.new(1, -5, 0, 32)
+                        
+                        local fCorner = Instance.new("UICorner")
+                        fCorner.CornerRadius = UDim.new(0, 4)
+                        fCorner.Parent = itemFrame
+                        
+                        local itemText = Instance.new("TextLabel")
+                        itemText.Parent = itemFrame
+                        itemText.BackgroundTransparency = 1
+                        itemText.Position = UDim2.new(0.05, 0, 0, 0)
+                        itemText.Size = UDim2.new(0.65, 0, 1, 0)
+                        itemText.Font = Enum.Font.SourceSansBold
+                        itemText.Text = tostring(obj.Name)
+                        itemText.TextColor3 = Color3.fromRGB(255, 215, 0)
+                        itemText.TextSize = 12
+                        itemText.TextXAlignment = Enum.TextXAlignment.Left
+                        
+                        local stealActionBtn = Instance.new("TextButton")
+                        stealActionBtn.Parent = itemFrame
+                        stealActionBtn.BackgroundColor3 = Color3.fromRGB(46, 139, 87)
+                        stealActionBtn.Position = UDim2.new(0.7, 0, 0.15, 0)
+                        stealActionBtn.Size = UDim2.new(0.25, 0, 0.7, 0)
+                        stealActionBtn.Font = Enum.Font.SourceSansBold
+                        stealActionBtn.Text = "Steal"
+                        stealActionBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+                        stealActionBtn.TextSize = 11
+                        
+                        local sCorner = Instance.new("UICorner")
+                        sCorner.CornerRadius = UDim.new(0, 4)
+                        sCorner.Parent = stealActionBtn
+                        
+                        local targetObj = obj
+                        stealActionBtn.MouseButton1Click:Connect(function()
+                            pcall(function()
+                                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                                    LocalPlayer.Character.HumanoidRootPart.CFrame = targetObj.CFrame + Vector3.new(0, 3, 0)
+                                end
+                            end)
+                        end)
+                    end
+                end
+            end
+        end)
+        task.wait(3)
+    end
+end)
+
+-- Auto Steal Loop
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if AutoStealEnabled then
+            pcall(function()
+                local char = LocalPlayer.Character
+                if char and char:FindFirstChild("HumanoidRootPart") then
+                    for _, obj in pairs(Workspace:GetDescendants()) do
+                        if not AutoStealEnabled then break end
+                        if obj:IsA("BasePart") and (string.find(string.lower(obj.Name), "egg") or string.find(string.lower(obj.Name), "ovo")) then
+                            if obj.Parent and not obj.Parent:FindFirstChild("Humanoid") then
+                                char.HumanoidRootPart.CFrame = obj.CFrame + Vector3.new(0, 3, 0)
+                                task.wait(0.2)
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+-- ==========================================
+-- 3. ABAS DO HUB v2.4
+-- ==========================================
+local TabPlayer = Window:NewTab("Player")
+local TabServer = Window:NewTab("Server")
+
+local SectionPlayer = TabPlayer:NewSection("Modificações do Jogador")
+local SectionServer = TabServer:NewSection("Gerenciamento de Servidores")
+
+-- PLAYER (Speed Boost Anti-Stun)
+SectionPlayer:NewToggle("Speed Boost", "Velocidade otimizada sem puxar para trás", function(state)
+    SpeedBoostEnabled = state
+end)
+
+SectionPlayer:NewSlider("Boost Speed", "Ajusta a velocidade (Recomendado até 300)", 1000, 16, function(val)
+    BoostSpeed = val
+end)
+
+RunService.RenderStepped:Connect(function()
+    pcall(function()
+        if SpeedBoostEnabled then
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") and char:FindFirstChild("HumanoidRootPart") then
+                local humanoid = char.Humanoid
+                humanoid.WalkSpeed = BoostSpeed
+                if humanoid.MoveDirection.Magnitude > 0 then
+                    char.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame + (humanoid.MoveDirection * (BoostSpeed / 15000))
+                end
+            end
+        end
+    end)
+end)
+
+-- ==========================================
+-- 4. SERVER HOP
+-- ==========================================
+SectionServer:NewDropdown("Server Hop Mode", "Modo de troca de servidor", {"Least Players", "Most Players", "Random"}, function(selected)
+    ServerHopMode = selected
+end)
+
+SectionServer:NewButton("Server Hop", "Procura e entra em outro servidor", function()
+    local Servers = {}
+    local Success = pcall(function()
+        local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+        Servers = HttpService:JSONDecode(game:HttpGet(url)).data
+    end)
+
+    if Success and Servers then
+        local targetServer = nil
+        if ServerHopMode == "Least Players" then
+            table.sort(Servers, function(a, b) return a.playing < b.playing end)
+            for _, s in ipairs(Servers) do
+                if s.playing < s.maxPlayers and s.id ~= game.JobId then targetServer = s.id break end
+            end
+        elseif ServerHopMode == "Most Players" then
+            table.sort(Servers, function(a, b) return a.playing > b.playing end)
+            for _, s in ipairs(Servers) do
+                if s.playing < s.maxPlayers and s.id ~= game.JobId then targetServer = s.id break end
+            end
+        elseif ServerHopMode == "Random" then
+            local validServers = {}
+            for _, s in ipairs(Servers) do
+                if s.playing < s.maxPlayers and s.id ~= game.JobId then table.insert(validServers, s.id) end
+            end
+            if #validServers > 0 then targetServer = validServers[math.random(1, #validServers)] end
+        end
+
+        if targetServer then
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, targetServer, LocalPlayer)
+        end
+    end
+end)
+
+SectionServer:NewButton("Rejoin Server", "Reconecta no mesmo servidor", function()
+    TeleportService:Teleport(game.PlaceId, LocalPlayer)
+end)
