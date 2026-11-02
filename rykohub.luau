@@ -1,8 +1,8 @@
--- RYKO HUB v2.5 - Roube um Ovo (Edição Definitiva & Arrastável)
+-- RYKO HUB v2.6 - Roube um Ovo (Speed Fix & Mobile Friendly)
 -- Executor: Delta
 
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("RYKO HUB v2.5", "DarkTheme")
+local Window = Library.CreateLib("RYKO HUB v2.6", "DarkTheme")
 
 -- Servicos do Roblox
 local Players = game:GetService("Players")
@@ -16,12 +16,12 @@ local LocalPlayer = Players.LocalPlayer
 
 -- Variaveis de Configuracao
 local SpeedBoostEnabled = false
-local BoostSpeed = 300
+local BoostSpeed = 100 -- Velocidade inicial segura
 local ServerHopMode = "Least Players"
 local AutoStealEnabled = false
 
 -- ==========================================
--- 1. TORNAR O PAINEL PRINCIPAL (KAVO) ARRASTÁVEL
+-- 1. TORNAR O PAINEL PRINCIPAL ARRASTÁVEL
 -- ==========================================
 task.spawn(function()
     task.wait(0.5)
@@ -65,7 +65,6 @@ UIStroke.Parent = ImageButton
 UIStroke.Color = Color3.fromRGB(138, 43, 225)
 UIStroke.Thickness = 2
 
--- Arrastar Botão Principal sem conflito
 local dragging, dragInput, dragStart, startPos, clicked = false, nil, nil, nil, true
 ImageButton.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -112,7 +111,7 @@ ImageButton.MouseButton1Click:Connect(function()
 end)
 
 -- ==========================================
--- 3. PAINEL LATERAL FLUTUANTE (STEAL PANEL) COM CORREDOR AUTOMÁTICO
+-- 3. PAINEL LATERAL FLUTUANTE (STEAL PANEL)
 -- ==========================================
 local ExistingStealGui = CoreGui:FindFirstChild("RykoStealPanel")
 if ExistingStealGui then ExistingStealGui:Destroy() end
@@ -223,7 +222,6 @@ UIListLayout.Parent = ScrollingFrame
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Padding = UDim.new(0, 5)
 
--- Função de Caminhar até o Ovo (Sem Teleporte, sem morrer/stun)
 local function WalkToTarget(targetPos)
     pcall(function()
         local char = LocalPlayer.Character
@@ -233,7 +231,6 @@ local function WalkToTarget(targetPos)
     end)
 end
 
--- Atualizador dos Ovos
 task.spawn(function()
     while true do
         pcall(function()
@@ -290,7 +287,6 @@ task.spawn(function()
     end
 end)
 
--- Auto Steal por Caminhada Fluida
 task.spawn(function()
     while true do
         task.wait(1)
@@ -311,7 +307,7 @@ task.spawn(function()
 end)
 
 -- ==========================================
--- 4. ABAS DO HUB v2.5
+-- 4. ABAS DO HUB v2.6 (Controlo de Velocidade por Botões Seguros)
 -- ==========================================
 local TabPlayer = Window:NewTab("Player")
 local TabServer = Window:NewTab("Server")
@@ -319,13 +315,19 @@ local TabServer = Window:NewTab("Server")
 local SectionPlayer = TabPlayer:NewSection("Modificações do Jogador")
 local SectionServer = TabServer:NewSection("Gerenciamento de Servidores")
 
--- PLAYER (Speed Boost 100% Estável e Sem Stun por Movimento Nativo)
-SectionPlayer:NewToggle("Speed Boost", "Velocidade otimizada sem puxar para trás", function(state)
+SectionPlayer:NewToggle("Speed Boost", "Ativa o impulso de velocidade", function(state)
     SpeedBoostEnabled = state
 end)
 
-SectionPlayer:NewSlider("Boost Speed", "Ajusta a velocidade (Recomendado até 300)", 1000, 16, function(val)
-    BoostSpeed = val
+-- Substituição do Slider problemático por botões de ajuste exatos para telemóvel
+SectionPlayer:NewButton("Velocidade: +50", "Aumenta a velocidade em 50", function()
+    BoostSpeed = math.min(BoostSpeed + 50, 500)
+    print("[RYKO HUB]: Velocidade atual = " .. BoostSpeed)
+end)
+
+SectionPlayer:NewButton("Velocidade: -50", "Diminui a velocidade em 50", function()
+    BoostSpeed = math.max(BoostSpeed - 50, 16)
+    print("[RYKO HUB]: Velocidade atual = " .. BoostSpeed)
 end)
 
 RunService.RenderStepped:Connect(function()
